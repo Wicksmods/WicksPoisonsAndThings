@@ -76,6 +76,8 @@ function A:OnInitialize()
         if ns.Poisons and ns.Poisons.UpdateMacros then ns.Poisons:UpdateMacros() end
     end)
 
+    Core.Cooldowns:New(self, { key = "cooldownBar" })
+
     Core.Kit:New(self, {
         racials = true,
         checklist = {
@@ -115,6 +117,8 @@ function A:OnEnable()
         end,
     })
 
+    if self.cooldowns then self.cooldowns:Init() end
+
     self:RegisterOptions(function(page, addon)
         local O = Core.Options
         local db = addon.db.profile
@@ -128,6 +132,7 @@ function A:OnEnable()
         y = O:Note(page, ("Warn under %d minutes. Change it with /wpt warn <minutes>. Pin a poison per hand with /wpt pin main <item link>."):format(db.warnMinutes or 5), y)
         y = O:Button(page, "Open panel", function() ns.UI:Toggle() end, y, 100)
         y = O:Button(page, "Open kit", function() addon.kit:Toggle() end, y, 100)
+        if addon.cooldowns then y = addon.cooldowns:OptionRow(page, y - 6) end
         y = O:ProfileSection(page, addon, y - 8)
     end)
 end
@@ -148,6 +153,7 @@ A:RegisterSlash(function(_, msg)
     local db = A.db.profile
     if lower == "" or lower == "show" or lower == "toggle" then ns.UI:Toggle() return end
     if lower == "kit" or lower == "talents" or lower == "checklist" then A.kit:Toggle() return end
+    if lower == "cd" or lower:match("^cd%s") then return A.cooldowns:Command(msg:match("^%a+%s*(.*)$")) end
     if lower == "options" or lower == "config" then A:OpenOptions() return end
     if lower == "strip" then
         db.showStrip = not (db.showStrip ~= false)
