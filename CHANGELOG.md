@@ -1,5 +1,10 @@
 # Wick's Poisons and Things - Changelog
 
+## Unreleased
+
+- Combo points over the target's nameplate. Off the game's own class
+  resource, which only ever sits under your own plate. Toggle in options.
+
 ## 0.1.0 - 2026-09-18 (Forever, beta)
 
 ### First cut of the rogue kit on WickCore

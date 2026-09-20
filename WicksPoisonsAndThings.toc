@@ -10,4 +10,5 @@
 
 Core.lua
 Poisons.lua
+Combo.lua
 UI.lua

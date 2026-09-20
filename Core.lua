@@ -19,6 +19,7 @@ local PROFILE_DEFAULTS = {
     warnMinutes = 5,      -- a blade under this many minutes reads as low
     pinned      = {},     -- hand -> itemID the key should always apply
     showStrip   = true,
+    comboOnPlate = true,  -- pips over the target's nameplate
     stripLocked = true,
     strip       = {},
     window      = {},
@@ -118,6 +119,7 @@ function A:OnEnable()
     })
 
     if self.cooldowns then self.cooldowns:Init() end
+    if ns.combo then ns.combo:Init() end
 
     self:RegisterOptions(function(page, addon)
         local O = Core.Options
@@ -132,6 +134,7 @@ function A:OnEnable()
         y = O:Note(page, ("Warn under %d minutes. Change it with /wpt warn <minutes>. Pin a poison per hand with /wpt pin main <item link>."):format(db.warnMinutes or 5), y)
         y = O:Button(page, "Open panel", function() ns.UI:Toggle() end, y, 100)
         y = O:Button(page, "Open kit", function() addon.kit:Toggle() end, y, 100)
+        if ns.combo then y = ns.combo:OptionRow(page, y - 6) end
         if addon.cooldowns then y = addon.cooldowns:OptionRow(page, y - 6) end
         y = O:ProfileSection(page, addon, y - 8)
     end)
