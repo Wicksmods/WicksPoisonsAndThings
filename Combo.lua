@@ -131,16 +131,29 @@ function Combo:Attach()
         return
     end
     local uf = plate.UnitFrame
-    -- Anchor to a frame, never to a texture or font string.
-    local anchor = (uf and (uf.HealthBarsContainer or uf.healthBar or uf.HealthBar)) or uf or plate
+    local health = (uf and (uf.HealthBarsContainer or uf.healthBar or uf.HealthBar)) or uf or plate
     row:SetParent(plate)
     row:SetFrameStrata("HIGH")
     row:ClearAllPoints()
-    if db().comboAbove then
-        -- Clear of the plate entirely, above where the name sits.
-        row:SetPoint("BOTTOM", anchor, "TOP", 0, 16)
-    else
-        row:SetPoint("TOP", anchor, "BOTTOM", 0, -3)
+    -- Under the health bar by default. Straight above it is where the
+    -- name lives, which is what the first version covered up.
+    --
+    -- The one thing under there to share with is the cast bar, whose
+    -- container anchors to the bottom of the unit frame. Anyone who
+    -- minds can move the pips above the name instead, anchored to the
+    -- name itself since the gap beneath it is a client constant we would
+    -- otherwise be guessing at.
+    local placed = false
+    if db().comboAbove and uf and uf.name then
+        -- The name is a font string. An unprotected frame may anchor to a
+        -- region, but this client refuses it for protected ones, so keep
+        -- a frame fallback rather than trust that we are never protected.
+        placed = pcall(row.SetPoint, row, "BOTTOM", uf.name, "TOP", 0, 2)
+        row.anchoredToName = placed
+    end
+    if not placed then
+        row.anchoredToName = false
+        row:SetPoint("TOP", health, "BOTTOM", 0, -3)
     end
     row:Show()
     self:Refresh()
@@ -214,9 +227,9 @@ function Combo:OptionRow(page, y)
     y = O:Check(page, "Show them over the target's nameplate",
         function() return db().comboOnPlate ~= false end,
         function(v) db().comboOnPlate = v; Combo:Attach() end, y)
-    y = O:Check(page, "Put them above the plate instead of below",
+    y = O:Check(page, "Put them above the name instead",
         function() return db().comboAbove == true end,
         function(v) db().comboAbove = v; Combo:Attach() end, y)
-    y = O:Note(page, "Needs enemy nameplates switched on in the game's own settings, since the pips ride the target's plate. Below the health bar by default, because above it is where the name sits. The game's own class resource only ever appears under your own nameplate, never the target's.", y)
+    y = O:Note(page, "Needs enemy nameplates switched on in the game's own settings, since the pips ride the target's plate. They sit under the health bar, sharing that space with the target's cast bar; above the name is clear of everything if you would rather. The game's own class resource only ever appears under your own nameplate, never the target's.", y)
     return y
 end
