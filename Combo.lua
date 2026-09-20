@@ -22,8 +22,7 @@ local Combo = {}
 ns.combo = Combo
 
 local FALLBACK_MAX = 5
-local PIP_W, PIP_H, PIP_GAP, PAD = 17, 6, 3, 3
-local FILL = "Interface\\Buttons\\WHITE8X8"
+local PIP_W, PIP_H, PIP_GAP = 18, 9, 4
 
 local function powerType()
     return (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
@@ -65,11 +64,10 @@ end
 function Combo:Build()
     if self.row then return self.row end
     local row = CreateFrame("Frame", "WicksPoisonsComboRow", UIParent)
-    row:SetHeight(PIP_H + PAD * 2)
+    row:SetHeight(PIP_H)
     row:Hide()
-    local bg = Chrome:Texture(row, "BACKGROUND", C.voidBG)
-    bg:SetAllPoints()
-    Chrome:AddBorder(row)
+    -- No background on the row. A filled strip over a nameplate reads as
+    -- one more bar; separate outlined pips read as pips.
     row.pips = {}
     self.row = row
     self:Reshape()
@@ -82,10 +80,14 @@ function Combo:Reshape()
     local n = maxPoints()
     for i = #row.pips + 1, n do
         local bar = CreateFrame("StatusBar", nil, row)
-        bar:SetStatusBarTexture(FILL)
-        bar:SetStatusBarColor(C.fel[1], C.fel[2], C.fel[3], 1)
-        local empty = Chrome:Texture(bar, "BACKGROUND", C.shadow)
+        local empty = Chrome:Texture(bar, "BACKGROUND", C.void)
         empty:SetAllPoints()
+        -- Build the fill as a plain colour rather than naming a texture
+        -- file. An art path that resolves to nothing leaves the pip
+        -- looking permanently empty with nothing to show for it.
+        local fill = Chrome:Texture(bar, "ARTWORK", C.fel)
+        bar:SetStatusBarTexture(fill)
+        Chrome:AddBorder(bar)
         row.pips[i] = bar
     end
     for i = 1, #row.pips do
@@ -95,14 +97,14 @@ function Combo:Reshape()
             bar:SetMinMaxValues(i - 1, i)
             bar:SetSize(PIP_W, PIP_H)
             bar:ClearAllPoints()
-            bar:SetPoint("LEFT", row, "LEFT", PAD + (i - 1) * (PIP_W + PIP_GAP), 0)
+            bar:SetPoint("LEFT", row, "LEFT", (i - 1) * (PIP_W + PIP_GAP), 0)
             bar:Show()
         else
             bar:Hide()
         end
     end
     row.count = n
-    row:SetWidth(PAD * 2 + n * PIP_W + math.max(0, n - 1) * PIP_GAP)
+    row:SetWidth(n * PIP_W + math.max(0, n - 1) * PIP_GAP)
     self:Refresh()
 end
 
@@ -134,7 +136,12 @@ function Combo:Attach()
     row:SetParent(plate)
     row:SetFrameStrata("HIGH")
     row:ClearAllPoints()
-    row:SetPoint("BOTTOM", anchor, "TOP", 0, 5)
+    if db().comboAbove then
+        -- Clear of the plate entirely, above where the name sits.
+        row:SetPoint("BOTTOM", anchor, "TOP", 0, 16)
+    else
+        row:SetPoint("TOP", anchor, "BOTTOM", 0, -3)
+    end
     row:Show()
     self:Refresh()
 end
@@ -166,12 +173,50 @@ function Combo:Init()
     end)
 end
 
+-- /wpt combo. Whether a pip is empty because there are no points or
+-- because the client will not say is not something you can see.
+function Combo:Report(print_)
+    local S = rawget(_G, "C_Secrets")
+    local function ask(fn, ...)
+        if not (S and S[fn]) then return "no such predicate" end
+        local ok, v = pcall(S[fn], ...)
+        return ok and tostring(v) or "errored"
+    end
+    print_(("power secret: %s   max secret: %s")
+        :format(ask("ShouldUnitPowerBeSecret", "player", powerType()),
+                ask("ShouldUnitPowerMaxBeSecret", "player", powerType())))
+
+    local secret = rawget(_G, "issecretvalue")
+    local function describe(label, getter)
+        local ok, v = pcall(getter)
+        if not ok then return print_(label .. ": call failed") end
+        local isSecret = secret and secret(v)
+        if isSecret then return print_(label .. ": secret, type " .. type(v)) end
+        return print_(("%s: %s (type %s)"):format(label, tostring(v), type(v)))
+    end
+    describe("GetComboPoints", function() return GetComboPoints and GetComboPoints("player", "target") end)
+    describe("UnitPower", function() return UnitPower("player", powerType()) end)
+    describe("UnitPowerMax", function() return UnitPowerMax("player", powerType()) end)
+
+    local row = self.row
+    print_(("row: %s, %d pips, parent %s")
+        :format(row and (row:IsShown() and "shown" or "hidden") or "not built",
+                row and row.count or 0,
+                row and row:GetParent() and (row:GetParent():GetName() or "unnamed plate") or "none"))
+    local NP = rawget(_G, "C_NamePlate")
+    local plate = NP and NP.GetNamePlateForUnit and NP.GetNamePlateForUnit("target")
+    print_("target has a nameplate: " .. tostring(plate ~= nil))
+end
+
 function Combo:OptionRow(page, y)
     local O = Core.Options
     y = O:Heading(page, "Combo points", y)
     y = O:Check(page, "Show them over the target's nameplate",
         function() return db().comboOnPlate ~= false end,
         function(v) db().comboOnPlate = v; Combo:Attach() end, y)
-    y = O:Note(page, "Needs enemy nameplates switched on in the game's own settings, since the pips ride the target's plate. The game's own class resource only ever sits under your own nameplate.", y)
+    y = O:Check(page, "Put them above the plate instead of below",
+        function() return db().comboAbove == true end,
+        function(v) db().comboAbove = v; Combo:Attach() end, y)
+    y = O:Note(page, "Needs enemy nameplates switched on in the game's own settings, since the pips ride the target's plate. Below the health bar by default, because above it is where the name sits. The game's own class resource only ever appears under your own nameplate, never the target's.", y)
     return y
 end

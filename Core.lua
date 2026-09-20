@@ -157,6 +157,11 @@ A:RegisterSlash(function(_, msg)
     if lower == "" or lower == "show" or lower == "toggle" then ns.UI:Toggle() return end
     if lower == "kit" or lower == "talents" or lower == "checklist" then A.kit:Toggle() return end
     if lower == "cd" or lower:match("^cd%s") then return A.cooldowns:Command(msg:match("^%a+%s*(.*)$")) end
+    if lower == "combo" then
+        if ns.combo then ns.combo:Report(function(line) A:Print(line) end)
+        else A:Print("combo points are rogue only") end
+        return
+    end
     if lower == "options" or lower == "config" then A:OpenOptions() return end
     if lower == "strip" then
         db.showStrip = not (db.showStrip ~= false)
