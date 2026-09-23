@@ -14,6 +14,7 @@
 -- or plain, which means it keeps working if Blizzard changes its mind.
 
 local ADDON, ns = ...
+if not WickCore then return end   -- said once in Core.lua
 local Core = WickCore
 local Chrome = Core.Chrome
 local C = Chrome.Colors

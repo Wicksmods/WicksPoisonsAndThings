@@ -3,7 +3,7 @@
 ## Notes: Rogue loadout kit for World of Warcraft: Forever. Poison watch with one-key coating, talents, pre-pull checklist, racials.
 ## Author: Wick
 ## Version: 0.1.0
-## Dependencies: WickCore
+## OptionalDeps: WickCore
 ## SavedVariables: WicksPoisonsSaved
 ## X-Website: https://wicksmods.com
 ## X-WickCore: WickCore-1.0

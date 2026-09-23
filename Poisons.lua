@@ -9,6 +9,7 @@
 -- and then the weapon slot.
 
 local ADDON, ns = ...
+if not WickCore then return end   -- said once in Core.lua
 local Core = WickCore
 local D, R = Core.Dialect, Core.Restrict
 
