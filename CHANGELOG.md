@@ -1,5 +1,11 @@
 # Wick's Poisons and Things - Changelog
 
+## 0.9.0
+
+One version across the suite for the Forever beta. Every addon carried a
+number of its own that said nothing about how finished it was, so they are
+aligned here and the suite goes to 1.0.0 together at launch.
+
 ## Unreleased
 
 - Combo points over the target's nameplate. Off the game's own class
