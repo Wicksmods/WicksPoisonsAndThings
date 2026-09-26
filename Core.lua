@@ -45,6 +45,7 @@ local PROFILE_DEFAULTS = {
     pinned      = {},     -- hand -> itemID the key should always apply
     showStrip   = true,
     comboOnPlate = true,  -- pips over the target's nameplate
+    comboEnergy  = true,  -- and an energy bar under them
     stripLocked = true,
     strip       = {},
     window      = {},

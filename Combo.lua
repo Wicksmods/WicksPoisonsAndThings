@@ -1,5 +1,6 @@
 -- Wick's Poisons and Things
--- Combo.lua: combo points over the target's nameplate.
+-- Combo.lua: combo points over the target's nameplate, with the energy
+-- to spend them under.
 --
 -- The client puts the class resource under the player's own nameplate and
 -- nowhere else, so over the target's head has to be ours.
@@ -12,6 +13,12 @@
 -- lands because its range is two to three, not because anything asked how
 -- many points there are. That renders the same whether the value is secret
 -- or plain, which means it keeps working if Blizzard changes its mind.
+--
+-- The energy bar works the same way and for the same reason: the range
+-- is set once from the maximum and the raw reading goes into SetValue.
+-- It is one bar rather than pips because energy is a quantity and combo
+-- points are a count, and it is dimmer than they are so the two do not
+-- read as one control even under a theme that colours both alike.
 
 local ADDON, ns = ...
 if not WickCore then return end   -- said once in Core.lua
@@ -24,9 +31,24 @@ ns.combo = Combo
 
 local FALLBACK_MAX = 5
 local PIP_W, PIP_H, PIP_GAP = 18, 9, 4
+-- Small: it is there to be caught out of the corner of an eye during a
+-- fight, not read.
+local ENERGY_H, ENERGY_GAP = 4, 3
+local FALLBACK_ENERGY = 100
 
 local function powerType()
     return (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
+end
+
+local function energyType()
+    return (Enum and Enum.PowerType and Enum.PowerType.Energy) or 3
+end
+
+-- Read without ever comparing, the way the combo count is read.
+local function energy()
+    local ok, n = pcall(UnitPower, "player", energyType())
+    if ok and n ~= nil then return n end
+    return 0
 end
 
 local function db()
@@ -47,19 +69,31 @@ end
 -- The maximum is worth asking for, since talents move it, but it is a
 -- power too and can be secret. Ask the client whether it will answer
 -- honestly before trusting a comparison on it.
-local function maxPoints()
+--
+-- ceiling is what a believable answer looks like for this resource: a
+-- combo count in single figures, an energy pool in the low hundreds.
+-- Anything outside that is the client saying something we should not
+-- build a layout out of.
+local function maxPower(ptype, fallback, ceiling)
     local S = rawget(_G, "C_Secrets")
     if S and S.ShouldUnitPowerMaxBeSecret then
-        local ok, secret = pcall(S.ShouldUnitPowerMaxBeSecret, "player", powerType())
-        if ok and secret then return FALLBACK_MAX end
+        local ok, secret = pcall(S.ShouldUnitPowerMaxBeSecret, "player", ptype)
+        if ok and secret then return fallback end
     end
     local ok, n = pcall(function()
-        local v = UnitPowerMax("player", powerType())
-        if type(v) == "number" and v > 0 and v <= 10 then return v end
+        local v = UnitPowerMax("player", ptype)
+        if type(v) == "number" and v > 0 and v <= ceiling then return v end
         return nil
     end)
     if ok and n then return n end
-    return FALLBACK_MAX
+    return fallback
+end
+
+local function maxPoints() return maxPower(powerType(), FALLBACK_MAX, 10) end
+local function maxEnergy() return maxPower(energyType(), FALLBACK_ENERGY, 500) end
+
+local function energyShown()
+    return db().comboEnergy ~= false
 end
 
 function Combo:Build()
@@ -70,6 +104,19 @@ function Combo:Build()
     -- No background on the row. A filled strip over a nameplate reads as
     -- one more bar; separate outlined pips read as pips.
     row.pips = {}
+
+    -- The energy under the points. Built whether or not it is switched
+    -- on, since the option can be turned on without a reload.
+    local bar = CreateFrame("StatusBar", nil, row)
+    local empty = Chrome:Texture(bar, "BACKGROUND", C.void)
+    empty:SetAllPoints()
+    -- The accent at less than full strength, so it follows the theme
+    -- with the pips while staying the quieter of the two. Wash arrived
+    -- in WickCore 0.2.1; an older one gets the accent flat.
+    local tint = (Chrome.Wash and Chrome:Wash("fel", 0.7)) or C.fel
+    bar:SetStatusBarTexture(Chrome:Texture(bar, "ARTWORK", tint))
+    Chrome:AddBorder(bar)
+    row.energy = bar
     self.row = row
     self:Reshape()
     return row
@@ -98,14 +145,32 @@ function Combo:Reshape()
             bar:SetMinMaxValues(i - 1, i)
             bar:SetSize(PIP_W, PIP_H)
             bar:ClearAllPoints()
-            bar:SetPoint("LEFT", row, "LEFT", (i - 1) * (PIP_W + PIP_GAP), 0)
+            -- Off the top of the row, so the energy bar can own the
+            -- bottom of it and the whole thing anchors as one block
+            -- whichever way round it is placed.
+            bar:SetPoint("TOPLEFT", row, "TOPLEFT", (i - 1) * (PIP_W + PIP_GAP), 0)
             bar:Show()
         else
             bar:Hide()
         end
     end
     row.count = n
-    row:SetWidth(n * PIP_W + math.max(0, n - 1) * PIP_GAP)
+    local w = n * PIP_W + math.max(0, n - 1) * PIP_GAP
+    row:SetWidth(w)
+
+    local e = row.energy
+    if energyShown() then
+        e:SetMinMaxValues(0, maxEnergy())
+        e:SetHeight(ENERGY_H)
+        e:ClearAllPoints()
+        e:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+        e:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+        e:Show()
+        row:SetHeight(PIP_H + ENERGY_GAP + ENERGY_H)
+    else
+        e:Hide()
+        row:SetHeight(PIP_H)
+    end
     self:Refresh()
 end
 
@@ -115,6 +180,9 @@ function Combo:Refresh()
     local n = points()
     for i = 1, row.count do
         pcall(row.pips[i].SetValue, row.pips[i], n)
+    end
+    if row.energy and row.energy:IsShown() then
+        pcall(row.energy.SetValue, row.energy, energy())
     end
 end
 
@@ -169,6 +237,10 @@ function Combo:Init()
         "NAME_PLATE_UNIT_ADDED",
         "NAME_PLATE_UNIT_REMOVED",
         "UNIT_POWER_UPDATE",
+        -- Energy ticks rather than jumping, and the frequent one is
+        -- what makes the bar move with it. RegisterEvents swallows
+        -- a name this client has never heard of.
+        "UNIT_POWER_FREQUENT",
         "UNIT_MAXPOWER",
     })
     ns:On("PLAYER_ENTERING_WORLD", function() Combo:Attach() end)
@@ -179,11 +251,17 @@ function Combo:Init()
     ns:On("NAME_PLATE_UNIT_REMOVED", function(_, unit)
         if UnitIsUnit and UnitIsUnit(unit, "target") then Combo:Attach() end
     end)
+    local function ours(token)
+        return token == nil or token == "COMBO_POINTS" or token == "ENERGY"
+    end
     ns:On("UNIT_POWER_UPDATE", function(_, unit, token)
-        if unit == "player" and (token == nil or token == "COMBO_POINTS") then Combo:Refresh() end
+        if unit == "player" and ours(token) then Combo:Refresh() end
+    end)
+    ns:On("UNIT_POWER_FREQUENT", function(_, unit, token)
+        if unit == "player" and ours(token) then Combo:Refresh() end
     end)
     ns:On("UNIT_MAXPOWER", function(_, unit, token)
-        if unit == "player" and (token == nil or token == "COMBO_POINTS") then Combo:Reshape() end
+        if unit == "player" and ours(token) then Combo:Reshape() end
     end)
 end
 
@@ -211,8 +289,13 @@ function Combo:Report(print_)
     describe("GetComboPoints", function() return GetComboPoints and GetComboPoints("player", "target") end)
     describe("UnitPower", function() return UnitPower("player", powerType()) end)
     describe("UnitPowerMax", function() return UnitPowerMax("player", powerType()) end)
+    describe("UnitPower energy", function() return UnitPower("player", energyType()) end)
+    describe("UnitPowerMax energy", function() return UnitPowerMax("player", energyType()) end)
 
     local row = self.row
+    print_(("energy bar: %s, range 0 to %d")
+        :format(row and row.energy and (row.energy:IsShown() and "shown" or "off") or "not built",
+                maxEnergy()))
     print_(("row: %s, %d pips, parent %s")
         :format(row and (row:IsShown() and "shown" or "hidden") or "not built",
                 row and row.count or 0,
@@ -231,6 +314,9 @@ function Combo:OptionRow(page, y)
     y = O:Check(page, "Put them above the name instead",
         function() return db().comboAbove == true end,
         function(v) db().comboAbove = v; Combo:Attach() end, y)
+    y = O:Check(page, "Show your energy under them",
+        function() return db().comboEnergy ~= false end,
+        function(v) db().comboEnergy = v; Combo:Reshape(); Combo:Attach() end, y)
     y = O:Note(page, "Needs enemy nameplates switched on in the game's own settings, since the pips ride the target's plate. They sit under the health bar, sharing that space with the target's cast bar; above the name is clear of everything if you would rather. The game's own class resource only ever appears under your own nameplate, never the target's.", y)
     return y
 end
