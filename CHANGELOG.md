@@ -1,15 +1,19 @@
 # Wick's Poisons and Things - Changelog
 
+## Unreleased
+
+- Combo points over the target's nameplate. Off the game's own class
+  resource, which only ever sits under your own plate. Toggle in options.
+- An energy bar under them. The pips say how close the finisher is; this
+  says whether you can pay for it, without looking away to the player
+  frame. Nothing compares the reading, so it draws the same whether the
+  client hands energy over plainly or withholds it. Toggle in options.
+
 ## 0.9.0
 
 One version across the suite for the Forever beta. Every addon carried a
 number of its own that said nothing about how finished it was, so they are
 aligned here and the suite goes to 1.0.0 together at launch.
-
-## Unreleased
-
-- Combo points over the target's nameplate. Off the game's own class
-  resource, which only ever sits under your own plate. Toggle in options.
 
 ## 0.1.0 - 2026-09-18 (Forever, beta)
 
