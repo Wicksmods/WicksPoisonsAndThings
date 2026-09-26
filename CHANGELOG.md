@@ -31,6 +31,11 @@
   strike key leaves your hands alone while you are stealthed, so a
   press from stealth can no longer strip the dagger you were opening
   with.
+- And it waits for Stealth's cooldown. A macro cannot ask about one, so
+  while Stealth is down the lines that would put the dagger up are left
+  out of the macro entirely, rather than swapping your weapons for a
+  cast that goes nowhere. Getting back out of stealth still works, since
+  a cooldown should not be able to strand you holding the wrong blade.
 
 ## 0.9.0
 

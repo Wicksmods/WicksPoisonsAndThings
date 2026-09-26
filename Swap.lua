@@ -59,6 +59,22 @@ function Swap:StealthSpell()
     return spellName(STEALTH_ID, STEALTH_NAME)
 end
 
+-- A macro cannot ask about a cooldown: there is no [cooldown]
+-- conditional. So it is asked here, and while Stealth is down the lines
+-- that would put the dagger up are left out of the macro entirely.
+-- Otherwise the weapons swap and the cast goes nowhere, leaving you
+-- holding a dagger you cannot open with.
+--
+-- isActive is the part of a cooldown this client still answers for when
+-- the times come back secret. Anything it will not answer at all counts
+-- as ready, since refusing to work on a missing reading would be worse
+-- than the bug.
+function Swap:StealthReady()
+    local ok, cd = pcall(D.GetSpellCooldown, STEALTH_ID)
+    if not ok or type(cd) ~= "table" or cd.active == nil then return true end
+    return cd.active ~= true
+end
+
 -- ============================================================
 -- What is in your hands
 -- ============================================================
@@ -118,9 +134,18 @@ function Swap:Text(which, pair)
     if not pair then return "" end
     local lines = {}
     if which == "stealth" then
-        local a, b = equip("[nostealth,nocombat]", pair.dagger, pair.other)
+        -- Going in only while there is a stealth to go into. Coming
+        -- back out is not something a cooldown should be able to stop,
+        -- so those two stay whatever it says.
+        if self.stealthReady ~= false then
+            local a, b = equip("[nostealth,nocombat]", pair.dagger, pair.other)
+            table.insert(lines, a)
+            table.insert(lines, b)
+        end
         local c, d = equip("[stealth]", pair.other, pair.dagger)
-        lines = { a, b, c, d, "/cast " .. self:StealthSpell() }
+        table.insert(lines, c)
+        table.insert(lines, d)
+        table.insert(lines, "/cast " .. self:StealthSpell())
     else
         local a, b = equip("[nostealth]", pair.other, pair.dagger)
         lines = { a, b, "/cast " .. self:StrikeSpell() }
@@ -170,6 +195,7 @@ function Swap:Update()
     pending = false
     local pair, why = self:Pair()
     self.pair, self.why = pair, why
+    self.stealthReady = self:StealthReady()
     self.macro = {}
     local on = db().swap ~= false
     for which, list in pairs(buttons) do
@@ -197,10 +223,15 @@ function Swap:Init()
     end
 
     ns.RegisterEvents({ "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD",
-                        "PLAYER_REGEN_ENABLED" })
+                        "PLAYER_REGEN_ENABLED", "SPELL_UPDATE_COOLDOWN" })
     ns:On("PLAYER_EQUIPMENT_CHANGED", function() Swap:Update() end)
     ns:On("PLAYER_ENTERING_WORLD", function() Swap:Update() end)
     ns:On("PLAYER_REGEN_ENABLED", function() if pending then Swap:Update() end end)
+    -- This one fires constantly, so it only does the work when the
+    -- answer has actually turned over.
+    ns:On("SPELL_UPDATE_COOLDOWN", function()
+        if Swap:StealthReady() ~= Swap.stealthReady then Swap:Update() end
+    end)
     self:Update()
 end
 
@@ -247,6 +278,9 @@ function Swap:Report(print_)
         print_(("dagger: %s   other: %s   (dagger is in your %s hand now)")
             :format(name(pair.dagger), name(pair.other),
                     pair.daggerInMain and "main" or "off"))
+    end
+    if self.stealthReady == false then
+        print_("stealth is on cooldown, so the stealth key will not move your weapons until it is back.")
     end
     for _, which in ipairs({ "stealth", "strike" }) do
         local text = self.macro and self.macro[which]
