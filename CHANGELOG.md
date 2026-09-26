@@ -8,6 +8,16 @@
   says whether you can pay for it, without looking away to the player
   frame. Nothing compares the reading, so it draws the same whether the
   client hands energy over plainly or withholds it. Toggle in options.
+- Two weapon swap keys, for a slow main hand and a dagger off hand. One
+  puts the dagger in your main hand and stealths, the other puts the
+  slow weapon back and strikes. They read whatever you are wearing, so
+  a new weapon needs nothing done to it, and they address the blades by
+  item id rather than by name so two swords called the same thing
+  cannot pick the wrong one. Bind them under Key Bindings. The swap
+  costs you a swing and your coatings travel with the blades, both of
+  which are worth knowing before you use them. /wpt swap says what it
+  worked out; /wpt swap strike <spell> rides the swap back on something
+  other than Sinister Strike.
 
 ## 0.9.0
 

@@ -1,6 +1,8 @@
 <Bindings>
     <Binding name="CLICK WicksPoisonsMainButton:LeftButton" header="WICKSPOISONS" category="ADDONS"/>
     <Binding name="CLICK WicksPoisonsOffButton:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK WicksPoisonsStealthButton:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK WicksPoisonsStrikeButton:LeftButton" category="ADDONS"/>
     <Binding name="WICKSPOISONS_TOGGLE" category="ADDONS">
         if WicksPoisonsAndThings_Toggle then WicksPoisonsAndThings_Toggle() end
     </Binding>

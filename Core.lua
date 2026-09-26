@@ -46,6 +46,8 @@ local PROFILE_DEFAULTS = {
     showStrip   = true,
     comboOnPlate = true,  -- pips over the target's nameplate
     comboEnergy  = true,  -- and an energy bar under them
+    swap         = true,  -- dagger to the main hand on the stealth key
+    swapStrike   = nil,   -- the ability the swap back rides on
     stripLocked = true,
     strip       = {},
     window      = {},
@@ -146,6 +148,7 @@ function A:OnEnable()
 
     if self.cooldowns then self.cooldowns:Init() end
     if ns.combo then ns.combo:Init() end
+    if ns.swap then ns.swap:Init() end
 
     self:RegisterOptions(function(page, addon)
         local O = Core.Options
@@ -161,6 +164,7 @@ function A:OnEnable()
         y = O:Button(page, "Open panel", function() ns.UI:Toggle() end, y, 100)
         y = O:Button(page, "Open kit", function() addon.kit:Toggle() end, y, 100)
         if ns.combo then y = ns.combo:OptionRow(page, y - 6) end
+        if ns.swap and ns.isRogue then y = ns.swap:OptionRow(page, y - 6) end
         if addon.cooldowns then y = addon.cooldowns:OptionRow(page, y - 6) end
         y = O:ProfileSection(page, addon, y - 8)
     end)
@@ -170,6 +174,8 @@ end
 BINDING_HEADER_WICKSPOISONS = "Wick's Poisons and Things"
 _G["BINDING_NAME_CLICK WicksPoisonsMainButton:LeftButton"] = "Coat main hand"
 _G["BINDING_NAME_CLICK WicksPoisonsOffButton:LeftButton"] = "Coat off hand"
+_G["BINDING_NAME_CLICK WicksPoisonsStealthButton:LeftButton"] = "Stealth, dagger to main hand"
+_G["BINDING_NAME_CLICK WicksPoisonsStrikeButton:LeftButton"] = "Strike, slow weapon back"
 BINDING_NAME_WICKSPOISONS_TOGGLE = "Toggle poison panel"
 function WicksPoisonsAndThings_Toggle() if ns.UI then ns.UI:Toggle() end end
 
@@ -186,6 +192,12 @@ A:RegisterSlash(function(_, msg)
     if lower == "combo" then
         if ns.combo then ns.combo:Report(function(line) A:Print(line) end)
         else A:Print("combo points are rogue only") end
+        return
+    end
+    if lower == "swap" or lower:match("^swap%s") then
+        if ns.swap and ns.isRogue then
+            ns.swap:Command(msg:match("^%a+%s*(.*)$"), function(line) A:Print(line) end)
+        else A:Print("the weapon swap keys are rogue only") end
         return
     end
     if lower == "options" or lower == "config" then A:OpenOptions() return end

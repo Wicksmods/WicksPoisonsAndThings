@@ -11,4 +11,5 @@
 Core.lua
 Poisons.lua
 Combo.lua
+Swap.lua
 UI.lua
