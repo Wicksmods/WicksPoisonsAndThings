@@ -23,6 +23,14 @@
   are already holding there. Clicking one does what the key does. A pair
   it cannot read greys out rather than disappearing, so the strip never
   changes shape on you mid-pull.
+- The keys read your stance before moving anything. The stealth key is
+  a toggle for the weapons as well as the spell: pressed while
+  stealthed it drops stealth and puts the slow weapon back, where
+  before it put the dagger up again on the way out. It holds off
+  entirely in combat, where Stealth will not cast anyway. And the
+  strike key leaves your hands alone while you are stealthed, so a
+  press from stealth can no longer strip the dagger you were opening
+  with.
 
 ## 0.9.0
 

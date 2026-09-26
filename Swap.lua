@@ -92,23 +92,40 @@ function Swap:Pair()
     return { dagger = o.id, other = m.id, daggerInMain = false }
 end
 
--- Both lines, always. If the client swaps two equipped weapons straight
--- over, the second line is a no-op; if it puts the displaced one in a
--- bag instead, the second line picks it back up. Either way the hands
--- end up as named.
+-- Both hands are named on every branch. If the client swaps two
+-- equipped weapons straight over, the second line is a no-op; if it
+-- puts the displaced one in a bag instead, the second line picks it
+-- back up. Either way the hands end up as named.
+local function equip(cond, first, second)
+    return ("/equipslot %s %d item:%d"):format(cond, MAIN, first),
+           ("/equipslot %s %d item:%d"):format(cond, OFF, second)
+end
+
+-- The stealth key is a toggle for the spell, so it is a toggle for the
+-- weapons: entering, the dagger comes up; leaving, the slow one goes
+-- back. Without the second half, dropping stealth put the dagger in
+-- your main hand on the way out.
+--
+-- Nothing moves while you are in combat, because Stealth will not cast
+-- there and a swap you did not ask for leaves you fighting with the
+-- wrong weapons.
+--
+-- The strike key leaves your hands alone while you are stealthed. A
+-- press from stealth used to strip the dagger you were about to open
+-- with; now it strikes, and the swap comes on the next press, once the
+-- opener has broken stealth.
 function Swap:Text(which, pair)
     if not pair then return "" end
-    local first, second, spell
+    local lines = {}
     if which == "stealth" then
-        first, second, spell = pair.dagger, pair.other, self:StealthSpell()
+        local a, b = equip("[nostealth,nocombat]", pair.dagger, pair.other)
+        local c, d = equip("[stealth]", pair.other, pair.dagger)
+        lines = { a, b, c, d, "/cast " .. self:StealthSpell() }
     else
-        first, second, spell = pair.other, pair.dagger, self:StrikeSpell()
+        local a, b = equip("[nostealth]", pair.other, pair.dagger)
+        lines = { a, b, "/cast " .. self:StrikeSpell() }
     end
-    return table.concat({
-        ("/equipslot %d item:%d"):format(MAIN, first),
-        ("/equipslot %d item:%d"):format(OFF, second),
-        "/cast " .. spell,
-    }, "\n")
+    return table.concat(lines, "\n")
 end
 
 -- What the strip draws: the icon of the weapon each key would put in

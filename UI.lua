@@ -141,6 +141,13 @@ local function makeSwap(parent, which)
             if face.live then
                 GameTooltip:AddLine("Already there.", 0.5, 0.5, 0.5, true)
             end
+            if which == "stealth" then
+                GameTooltip:AddLine("Pressed again while stealthed, it drops stealth and puts the slow weapon back. Nothing moves in combat.",
+                    0.5, 0.5, 0.5, true)
+            else
+                GameTooltip:AddLine("Leaves your hands alone while you are stealthed, so it cannot strip the dagger you are opening with.",
+                    0.5, 0.5, 0.5, true)
+            end
             GameTooltip:AddLine("Costs a swing, and your coatings travel with the blades.",
                 0.5, 0.5, 0.5, true)
         end
