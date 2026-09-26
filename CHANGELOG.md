@@ -18,6 +18,11 @@
   which are worth knowing before you use them. /wpt swap says what it
   worked out; /wpt swap strike <spell> rides the swap back on something
   other than Sinister Strike.
+- The strip carries the swap as two icons on its right end, each the
+  weapon that key puts in your main hand, with a fel edge on the one you
+  are already holding there. Clicking one does what the key does. A pair
+  it cannot read greys out rather than disappearing, so the strip never
+  changes shape on you mid-pull.
 
 ## 0.9.0
 

@@ -102,12 +102,70 @@ local function makeBlade(parent, hand, strip)
     return b
 end
 
+-- Each of the two swap keys, as a button on the strip. The icon is the
+-- weapon that key puts in your main hand, so the one you are not
+-- holding is the one worth pressing.
+local SWAP_W = STRIP_H - 4
+
+local function makeSwap(parent, which)
+    local b = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
+    b:SetSize(SWAP_W, SWAP_W)
+    b:RegisterForClicks("AnyUp", "AnyDown")
+    ns.swap:RegisterButton(which, b)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetPoint("TOPLEFT", 1, -1)
+    b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- The same fel edge the paperdoll uses for the piece that is on:
+    -- here it means the weapon already in your main hand.
+    b.live = Chrome:Texture(b, "OVERLAY", C.fel)
+    b.live:SetPoint("BOTTOMLEFT", 1, 1)
+    b.live:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.live:SetHeight(2)
+    b.live:Hide()
+    b.hl = b:CreateTexture(nil, "HIGHLIGHT")
+    b.hl:SetAllPoints()
+    b.hl:SetColorTexture(1, 1, 1, 0.10)
+    b:SetScript("OnEnter", function(s)
+        GameTooltip:SetOwner(s, "ANCHOR_TOP")
+        local faces = ns.swap:Faces()
+        local face = faces and faces[which]
+        if not face then
+            GameTooltip:SetText("Weapon swap")
+            GameTooltip:AddLine(tostring(ns.swap.why or "nothing to swap"), 0.5, 0.5, 0.5, true)
+        else
+            local name = Core.Dialect.GetItemNameByID(face.id) or "that weapon"
+            GameTooltip:SetText(which == "stealth" and "Stealth, dagger to main hand"
+                                                    or "Strike, slow weapon back")
+            GameTooltip:AddLine(name .. " to your main hand.", 0.8, 0.8, 0.8, true)
+            if face.live then
+                GameTooltip:AddLine("Already there.", 0.5, 0.5, 0.5, true)
+            end
+            GameTooltip:AddLine("Costs a swing, and your coatings travel with the blades.",
+                0.5, 0.5, 0.5, true)
+        end
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Said out loud at build time. A protected frame cannot be shown or
+    -- hidden once a fight starts, so its visibility is settled here and
+    -- never touched again.
+    b:Show()
+    return b
+end
+
 function UI:BuildStrip()
     if self.strip then return self.strip end
     local db = ns.db and ns.db.profile
     local f = CreateFrame("Frame", "WicksPoisonsStrip", UIParent)
     self.strip = f
-    f:SetSize(PAD + HAND_W * 2 + 3 + PAD, STRIP_H)
+    -- The swap block is a rogue thing and an optional one, so the strip
+    -- is only as wide as it has something to put there. Width is settled
+    -- at build time: a protected child cannot be shown, hidden or
+    -- re-anchored in a fight, so nothing here moves once it is up.
+    local swapW = (ns.swap and ns.swap:Shown()) and (1 + SWAP_W * 2 + 2) or 0
+    f.swapW = swapW
+    f:SetSize(PAD + HAND_W * 2 + 3 + swapW + PAD, STRIP_H)
     f:SetPoint("CENTER", 0, -250)
     f:SetFrameStrata("MEDIUM")
     f:SetMovable(true)
@@ -147,6 +205,16 @@ function UI:BuildStrip()
 
     f.offBtn = makeBlade(f, "off", f)
     f.offBtn:SetPoint("LEFT", mid, "RIGHT", 1, 0)
+
+    if swapW > 0 then
+        local sdiv = CreateFrame("Frame", nil, f)
+        sdiv:SetPoint("LEFT", f.offBtn, "RIGHT", 1, 0); sdiv:SetSize(1, STRIP_H - 6)
+        local sd = Chrome:Texture(sdiv, "ARTWORK", C.border); sd:SetAllPoints()
+        f.swapStealth = makeSwap(f, "stealth")
+        f.swapStealth:SetPoint("LEFT", sdiv, "RIGHT", 1, 0)
+        f.swapStrike = makeSwap(f, "strike")
+        f.swapStrike:SetPoint("LEFT", f.swapStealth, "RIGHT", 1, 0)
+    end
 
     f:SetScript("OnShow", function() UI:RefreshStrip() end)
     R:OnChange(function() if f:IsShown() then UI:RefreshStrip() end end)
@@ -201,6 +269,24 @@ local function dressBlade(btn, h, pick, warn)
     tint(btn.text, c)
 end
 
+-- Icons and the live edge only. Nothing here shows, hides or moves a
+-- protected frame, so it is safe to run mid-fight, which the ticker
+-- does.
+function UI:RefreshSwap()
+    local f = self.strip
+    if not (f and f.swapStealth) then return end
+    local faces = ns.swap and ns.swap:Faces()
+    for which, b in pairs({ stealth = f.swapStealth, strike = f.swapStrike }) do
+        local face = faces and faces[which]
+        b.icon:SetTexture(face and face.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        -- A pair it cannot make sense of goes grey rather than
+        -- disappearing, so the strip does not change shape on you.
+        b.icon:SetDesaturated(face == nil)
+        b.icon:SetAlpha(face and 1 or 0.35)
+        b.live:SetShown(face ~= nil and face.live == true)
+    end
+end
+
 function UI:RefreshStrip()
     local f = self.strip
     if not f or not f.mainBtn or not f:IsShown() then return end
@@ -208,6 +294,7 @@ function UI:RefreshStrip()
     local choice = ns.Poisons.choice or {}
     dressBlade(f.mainBtn, ns.Poisons:Hand("main"), choice.main, warn)
     dressBlade(f.offBtn, ns.Poisons:Hand("off"), choice.off, warn)
+    self:RefreshSwap()
 end
 
 -- ============================================================

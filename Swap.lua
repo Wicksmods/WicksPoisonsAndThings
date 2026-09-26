@@ -111,6 +111,25 @@ function Swap:Text(which, pair)
     }, "\n")
 end
 
+-- What the strip draws: the icon of the weapon each key would put in
+-- your main hand, and which of the two you are already holding there.
+function Swap:Faces()
+    local pair = self.pair
+    if not pair then return nil end
+    local function icon(id)
+        local info = D.GetItemInfoInstant(id)
+        return info and info.icon or nil
+    end
+    return {
+        stealth = { id = pair.dagger, icon = icon(pair.dagger), live = pair.daggerInMain },
+        strike  = { id = pair.other,  icon = icon(pair.other),  live = not pair.daggerInMain },
+    }
+end
+
+function Swap:Shown()
+    return ns.isRogue and db().swap ~= false
+end
+
 -- ============================================================
 -- The keys
 -- ============================================================
@@ -141,6 +160,7 @@ function Swap:Update()
         self.macro[which] = text
         for _, b in ipairs(list) do b:SetAttribute("macrotext", text) end
     end
+    if ns.UI and ns.UI.RefreshSwap then ns.UI:RefreshSwap() end
     if ns.UI and ns.UI.Refresh then ns.UI:Refresh() end
 end
 
