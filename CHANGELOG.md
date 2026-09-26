@@ -36,6 +36,11 @@
   out of the macro entirely, rather than swapping your weapons for a
   cast that goes nowhere. Getting back out of stealth still works, since
   a cooldown should not be able to strand you holding the wrong blade.
+- The mark on the strip keeps up with a swap made in combat. Reading
+  which hand holds what and redrawing the strip sat behind the guard
+  that stops a macro being rewritten mid-fight, which applies to
+  neither, so the weapons moved on the key and the mark did not follow
+  until the fight ended.
 
 ## 0.9.0
 

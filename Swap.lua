@@ -188,14 +188,22 @@ function Swap:RegisterButton(which, b)
 end
 
 function Swap:Update()
-    -- A secure attribute cannot be written in combat, which is the
-    -- whole reason this is a key you press rather than something that
-    -- happens to you.
-    if InCombatLockdown() then pending = true return end
-    pending = false
+    -- Reading which hand holds what costs nothing, and the strip only
+    -- draws, so both happen whatever the client will let us write.
+    -- These used to sit behind the guard below and the mark on the
+    -- strip stayed put until the fight ended.
     local pair, why = self:Pair()
     self.pair, self.why = pair, why
     self.stealthReady = self:StealthReady()
+    if ns.UI and ns.UI.RefreshSwap then ns.UI:RefreshSwap() end
+
+    -- A secure attribute cannot be written in combat, which is the
+    -- whole reason this is a key you press rather than something that
+    -- happens to you. Nothing is lost by it waiting: pressing a swap
+    -- key moves the same two weapons between hands, so the ids in the
+    -- macro are still right and only the mark was stale.
+    if InCombatLockdown() then pending = true return end
+    pending = false
     self.macro = {}
     local on = db().swap ~= false
     for which, list in pairs(buttons) do
@@ -203,7 +211,6 @@ function Swap:Update()
         self.macro[which] = text
         for _, b in ipairs(list) do b:SetAttribute("macrotext", text) end
     end
-    if ns.UI and ns.UI.RefreshSwap then ns.UI:RefreshSwap() end
     if ns.UI and ns.UI.Refresh then ns.UI:Refresh() end
 end
 
